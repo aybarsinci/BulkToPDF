@@ -12,7 +12,7 @@ To download the latest version of BulkToPDF, click the button below:
 
 - **Batch Conversion**: Convert multiple Word documents (.doc, .docx) and Excel spreadsheets (.xls, .xlsx) to PDF in one go.
 - **User-Friendly Interface**: Easy-to-use graphical user interface for seamless operation.
-- **Cross-Platform**: Run the application on various operating systems thanks to Python's versatility.
+- **Windows-only**: For now application is only executable on Windows.
 
 
 ## Usage
