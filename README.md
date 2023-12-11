@@ -1,6 +1,6 @@
 # BulkToPDF
 
-A desktop application to bulk convert documents to PDF format. Built with Python, this tool supports the conversion of Word and Excel files with a user-friendly GUI. Following the MVC architecture, it allows for easy maintenance and extensibility.
+A desktop application to bulk convert documents to PDF format. Built with Python, this tool supports the conversion of Word and Excel files with a user-friendly GUI. 
 
 ## Download
 

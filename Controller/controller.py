@@ -27,17 +27,35 @@ class PDFConverterController:
 
     def start_conversion(self):
         if not self.input_dir or not self.output_dir:
-            self.view.status_label.config(text="Please select both input and output directories.")
+            self.view.display_error("Please select both input and output directories.")  #display_error method for errors
             return
-        self.view.status_label.config(text="Converting...")
+        self.view.display_info("Converting...")  # display_info method for normal messages
         threading.Thread(target=self.convert, daemon=True).start()
 
     def convert(self):
-        os.makedirs(self.output_dir, exist_ok=True)
+        try:
+            os.makedirs(self.output_dir, exist_ok=True)
+            errors_occurred = False  # Flag to indicate if any errors occurred
 
-        for root, dirs, files in os.walk(self.input_dir):
-            for file in files:
-                file_path = os.path.join(root, file)
-                process_file(file_path, self.input_dir, self.output_dir)
+            for root, dirs, files in os.walk(self.input_dir):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    try:
+                        # This assumes process_file raises exceptions on failure
+                        process_file(file_path, self.input_dir, self.output_dir)
+                    except Exception as e:
+                        errors_occurred = True
+                        # Schedule the error display to run on the main thread
+                        self.view.after(0, self.view.display_error, f"Error converting {file}: {e}")
+                        break  # Remove this if you want to continue processing after an error
 
-        self.view.status_label.config(text="Conversion Completed")
+            if not errors_occurred:
+                #the info display to run on the main thread
+                self.view.after(0, self.view.display_info, "Conversion Completed")
+            else:
+                self.view.after(0, self.view.display_error, "Errors occurred during conversion. Check logs for details.")
+        except Exception as e:
+            #the error display to run on the main thread for any unexpected errors
+            self.view.after(0, self.view.display_error, f"Unexpected error: {e}")
+
+
