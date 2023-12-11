@@ -2,6 +2,12 @@
 
 A desktop application to bulk convert documents to PDF format. Built with Python, this tool supports the conversion of Word and Excel files with a user-friendly GUI. Following the MVC architecture, it allows for easy maintenance and extensibility.
 
+## Download
+
+To download the latest version of BulkToPDF, click the button below:
+
+[![Download BulkToPDF](https://img.shields.io/badge/download-BulkToPDF.exe-blue.svg)](https://github.com/aybarsinci/BulkToPDF/releases/tag/v1.0.0)
+
 ## Features
 
 - **Batch Conversion**: Convert multiple Word documents (.doc, .docx) and Excel spreadsheets (.xls, .xlsx) to PDF in one go.
