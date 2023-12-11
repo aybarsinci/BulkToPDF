@@ -6,7 +6,7 @@ from tkinter import filedialog
 from View.view import PDFConverterView
 import tkinter as tk
 import os
-
+import comtypes.client
 class PDFConverterController:
     def __init__(self, view):
         self.view = view
@@ -26,13 +26,23 @@ class PDFConverterController:
             self.view.output_entry.insert(0, self.output_dir)
 
     def start_conversion(self):
+        # Read the directories from the entry boxes directly
+        self.input_dir = self.view.input_entry.get()
+        self.output_dir = self.view.output_entry.get()
+
         if not self.input_dir or not self.output_dir:
             self.view.display_error("Please select both input and output directories.")  #display_error method for errors
             return
+
+        # Normalize paths and replace backslashes with forward slashes
+        self.input_dir = os.path.normpath(self.input_dir).replace('\\', '/')
+        self.output_dir = os.path.normpath(self.output_dir).replace('\\', '/')
+
         self.view.display_info("Converting...")  # display_info method for normal messages
         threading.Thread(target=self.convert, daemon=True).start()
 
     def convert(self):
+        comtypes.CoInitialize()
         try:
             os.makedirs(self.output_dir, exist_ok=True)
             errors_occurred = False  # Flag to indicate if any errors occurred
@@ -57,5 +67,9 @@ class PDFConverterController:
         except Exception as e:
             #the error display to run on the main thread for any unexpected errors
             self.view.after(0, self.view.display_error, f"Unexpected error: {e}")
+        finally:
+            comtypes.CoUninitialize()  # Uninitialize the COM library
+            self.view.after(0, self.view.display_info,
+                            "Conversion Completed" if not errors_occurred else "Some files could not be converted.")
 
 
