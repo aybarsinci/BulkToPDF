@@ -1,13 +1,26 @@
 import tkinter as tk
-from View.view import PDFConverterView
-from Controller.controller import PDFConverterController
+
+from bulktopdf.config import CONFIG
+from bulktopdf.logging_utils import configure_logging
+from bulktopdf.ui.controller import PDFConverterController
+from bulktopdf.ui.view import PDFConverterView
+
+try:
+    from tkinterdnd2 import TkinterDnD  # type: ignore
+except ImportError:
+    TkinterDnD = None
+
 
 def main():
-    root = tk.Tk()
-    root.title("PDF Converter")
+    configure_logging()
+    if TkinterDnD is not None:
+        root = TkinterDnD.Tk()
+    else:
+        root = tk.Tk()
+    root.title(CONFIG.ui.title)
 
     # Set a fixed window size
-    root.geometry("600x180")  # Width x Height in pixels
+    root.geometry(f"{CONFIG.ui.window_width}x{CONFIG.ui.window_height}")
 
     # Prevent resizing the window
     root.resizable(False, False)
