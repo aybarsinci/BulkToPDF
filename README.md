@@ -6,7 +6,7 @@ A desktop application to bulk convert documents to PDF format. Built with Python
 
 Pick your platform and grab the latest build from GitHub releases:
 
-[![Download for Windows](https://img.shields.io/badge/download-Windows_%28.exe%29-blue.svg)](https://github.com/aybarsinci/BulkToPDF/releases/download/v1.0.2/BulkToPDF.exe)
+[![Download for Windows](https://img.shields.io/badge/download-Windows_%28.zip%29-blue.svg)](https://github.com/aybarsinci/BulkToPDF/releases/download/v.1.0.5/BulkToPDF.zip)
 [![Download for macOS](https://img.shields.io/badge/download-macOS_%28.zip%29-green.svg)](https://github.com/aybarsinci/BulkToPDF/releases/download/v1.0.3/BulkToPDF-macOS.zip)
 
 ## Features

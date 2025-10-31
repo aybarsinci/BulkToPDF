@@ -1,5 +1,7 @@
 @echo off
 setlocal EnableDelayedExpansion
+rem DEBUG: echo commands if needed
+if /i "%DEBUG_BUILD%"=="1" echo on
 
 REM Build a Windows executable for BulkToPDF using PyInstaller.
 
@@ -20,21 +22,14 @@ call "%VENV_PATH%\Scripts\activate.bat"
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt pyinstaller
 
-for /f "usebackq delims=" %%I in (`"%VENV_PATH%\Scripts\python.exe" -c "import tkinterdnd2, os; print(os.path.join(os.path.dirname(tkinterdnd2.__file__), 'tkdnd'))"`) do (
-    set "TKDND_DIR=%%I"
-)
-
 if "%ICON_PATH%"=="" (
     set "ICON_PATH=%PROJECT_ROOT%\Resources\BulkToPDF_icon.ico"
 )
 
 set "PYINSTALLER=%VENV_PATH%\Scripts\pyinstaller.exe"
 
-if defined TKDND_DIR if exist "%TKDND_DIR%" (
-    "%PYINSTALLER%" --noconfirm --windowed --name BulkToPDF --icon "%ICON_PATH%" --hidden-import=tkinterdnd2 --add-data "%TKDND_DIR%;tkinterdnd2/tkdnd" main.py %*
-) else (
-    "%PYINSTALLER%" --noconfirm --windowed --name BulkToPDF --icon "%ICON_PATH%" --hidden-import=tkinterdnd2 main.py %*
-)
+echo Running: "%PYINSTALLER%" --noconfirm --windowed --name BulkToPDF --icon "%ICON_PATH%" --hidden-import=tkinterdnd2 --collect-all tkinterdnd2 main.py %*
+"%PYINSTALLER%" --noconfirm --windowed --name BulkToPDF --icon "%ICON_PATH%" --hidden-import=tkinterdnd2 --collect-all tkinterdnd2 main.py %*
 
 echo.
 echo Windows executable created at dist\BulkToPDF\BulkToPDF.exe
