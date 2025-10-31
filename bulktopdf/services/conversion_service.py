@@ -15,17 +15,25 @@ from bulktopdf.conversion import DocumentConverter, ConversionError
 from bulktopdf.logging_utils import configure_logging
 
 StatusCallback = Callable[[str], None]
-ErrorCallback = Callable[[str], None]
+ErrorCallback = Callable[[str, str], None]
 ProgressCallback = Callable[[int, int], None]
 
 logger = configure_logging()
 
 
 @dataclass(slots=True)
+class ConversionFailure:
+    """Detailed information about a failed conversion."""
+
+    relative_path: str
+    reason: str
+
+
+@dataclass(slots=True)
 class ConversionSummary:
     processed_files: int
     failed_files: int
-    errors: list[str]
+    errors: list[ConversionFailure]
     zip_path: Path | None
 
     @property
@@ -54,7 +62,7 @@ class ConversionService:
             raise FileNotFoundError(f"Input directory not found: {input_dir}")
 
         temp_dir = Path(tempfile.mkdtemp(prefix=self.settings.temporary_file_prefix))
-        errors: list[str] = []
+        errors: list[ConversionFailure] = []
         failed = 0
         processed = 0
 
@@ -77,8 +85,10 @@ class ConversionService:
                 except (ConversionError, RuntimeError, OSError) as exc:
                     failed += 1
                     rel_str = str(relative_path)
-                    errors.append(rel_str)
-                    error_callback(rel_str)
+                    reason = str(exc)
+                    failure = ConversionFailure(relative_path=rel_str, reason=reason)
+                    errors.append(failure)
+                    error_callback(rel_str, reason)
                     logger.warning("Failed to convert %s: %s", source, exc)
                 finally:
                     processed += 1

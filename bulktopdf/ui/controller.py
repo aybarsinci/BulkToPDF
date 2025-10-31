@@ -59,6 +59,7 @@ class PDFConverterController:
         self.view.reset_progress()
         self.view.convert_button.config(state="disabled")
         self.view.show_download_ready(False)
+        self.view.show_error_log_ready(False)
         self._copy_unsupported = self.view.should_copy_unsupported()
 
         self._conversion_thread = threading.Thread(
@@ -117,6 +118,7 @@ class PDFConverterController:
         else:
             self.view.display_info("Conversion completed successfully.")
         self.view.show_download_ready(summary.succeeded_files > 0 and summary.zip_path is not None)
+        self.view.show_error_log_ready(summary.failed_files > 0)
 
     def _finalize_ui(self) -> None:
         self.view.convert_button.config(state="normal")
@@ -128,3 +130,30 @@ class PDFConverterController:
             self.view.after(0, lambda: callback(*args, **kwargs))
 
         return wrapper
+
+    def save_error_log(self) -> None:
+        if not self._last_summary or not self._last_summary.errors:
+            self.view.display_error("No errors available to save.")
+            return
+
+        destination = filedialog.asksaveasfilename(
+            title="Save Error Log",
+            initialfile="BulkToPDF_errors.txt",
+            defaultextension=".txt",
+            filetypes=[("Text Files", "*.txt"), ("All Files", "*.*")],
+        )
+        if not destination:
+            return
+
+        try:
+            lines = [
+                f"{failure.relative_path}\n    {failure.reason}"
+                for failure in self._last_summary.errors
+            ]
+            with open(destination, "w", encoding="utf-8") as file:
+                file.write("BulkToPDF conversion errors\n\n")
+                file.write("\n\n".join(lines))
+            self.view.display_info(f"Error log saved to {destination}")
+        except OSError as exc:
+            logger.exception("Unable to save error log: %s", exc)
+            self.view.display_error(f"Unable to save error log: {exc}")

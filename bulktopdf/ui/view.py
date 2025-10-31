@@ -24,6 +24,7 @@ class ControllerProtocol:
 
     def set_input_directory(self, directory: str) -> None: ...
 
+    def save_error_log(self) -> None: ...
 
 class PDFConverterView(tk.Frame):
     """Tkinter view responsible for rendering the BulkToPDF UI."""
@@ -132,9 +133,9 @@ class PDFConverterView(tk.Frame):
 
         button_row = ttk.Frame(self)
         button_row.grid(row=2, column=0, sticky="ew", pady=(5, 15))
-        for column in range(3):
+        for column in range(4):
             button_row.columnconfigure(column, weight=0)
-        button_row.columnconfigure(3, weight=1)
+        button_row.columnconfigure(4, weight=1)
 
         browse_button = ttk.Button(button_row, text="Browse...", command=self.controller.browse_input)
         browse_button.grid(row=0, column=0, padx=(0, 10))
@@ -154,6 +155,14 @@ class PDFConverterView(tk.Frame):
             state=tk.DISABLED,
         )
         self.download_button.grid(row=0, column=2)
+
+        self.save_errors_button = ttk.Button(
+            button_row,
+            text="Save Errors",
+            command=self.controller.save_error_log,
+            state=tk.DISABLED,
+        )
+        self.save_errors_button.grid(row=0, column=3, padx=(0, 10))
 
         copy_checkbox = ttk.Checkbutton(
             button_row,
@@ -212,6 +221,7 @@ class PDFConverterView(tk.Frame):
         self.error_text.configure(yscrollcommand=status_scrollbar.set)
 
         self.download_button.grid_remove()
+        self.save_errors_button.grid_remove()
         self.error_count = 0
         self._update_error_header()
         self._tooltip_window: tk.Toplevel | None = None
@@ -251,6 +261,14 @@ class PDFConverterView(tk.Frame):
             self.download_button.config(state=tk.DISABLED)
             self.download_button.grid_remove()
 
+    def show_error_log_ready(self, errors_available: bool) -> None:
+        if errors_available:
+            self.save_errors_button.grid()
+            self.save_errors_button.config(state=tk.NORMAL)
+        else:
+            self.save_errors_button.config(state=tk.DISABLED)
+            self.save_errors_button.grid_remove()
+
     def reset_after_download(self) -> None:
         self.download_button.config(state=tk.DISABLED)
         self.display_info("Zip saved successfully.")
@@ -265,10 +283,12 @@ class PDFConverterView(tk.Frame):
         self.error_text.configure(state=tk.DISABLED)
         self.error_count = 0
         self._update_error_header()
+        self.show_error_log_ready(False)
 
-    def record_conversion_error(self, message: str) -> None:
-        self._set_status(message, is_error=True)
-        self._append_error(message)
+    def record_conversion_error(self, relative_path: str, reason: str) -> None:
+        display_message = f"Failed: {relative_path}"
+        self._set_status(display_message, is_error=True)
+        self._append_error(relative_path)
 
     # --------------------------------------------------------------------- Internal helpers
     def _apply_current_theme(self) -> None:
@@ -399,13 +419,13 @@ class PDFConverterView(tk.Frame):
         foreground = self._status_error_fg if is_error else self._status_normal_fg
         self.status_label.config(text=message, foreground=foreground)
 
-    def _append_error(self, message: str) -> None:
+    def _append_error(self, relative_path: str) -> None:
         self.error_text.configure(state=tk.NORMAL)
         if self.error_text.index("end-1c") != "1.0":
             self.error_text.insert(tk.END, "\n")
         self.error_count += 1
         self._update_error_header()
-        self.error_text.insert(tk.END, f"[{self.error_count}] {message}")
+        self.error_text.insert(tk.END, f"[{self.error_count}] {relative_path}")
         self.error_text.see(tk.END)
         self.error_text.configure(state=tk.DISABLED)
 

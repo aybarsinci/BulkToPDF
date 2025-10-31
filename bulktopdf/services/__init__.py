@@ -1,6 +1,6 @@
 """Higher-level application services."""
 
-from .conversion_service import ConversionService, ConversionSummary
+from .conversion_service import ConversionFailure, ConversionService, ConversionSummary
 
-__all__ = ["ConversionService", "ConversionSummary"]
+__all__ = ["ConversionService", "ConversionSummary", "ConversionFailure"]
 
