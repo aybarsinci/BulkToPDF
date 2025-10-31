@@ -1,0 +1,4 @@
+comtypes; platform_system == "Windows"
+# Optional drag-and-drop support
+# Comment out if not required.
+tkinterdnd2>=0.3.0
