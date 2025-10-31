@@ -34,6 +34,61 @@ class PDFConverterView(tk.Frame):
         self.dnd_supported = DND_FILES is not None and hasattr(master, "drop_target_register")
         self.selected_path = tk.StringVar(value="Drop a folder here or click Browse")
         self.copy_mode = tk.BooleanVar(value=CONFIG.conversion.copy_unsupported_by_default)
+        self._themes = {
+            "light": {
+                "background": "#F8FAFC",
+                "foreground": "#0F172A",
+                "surface": "#FFFFFF",
+                "surface_border": "#CBD5F5",
+                "surface_hover": "#E2E8F0",
+                "accent": "#2563EB",
+                "accent_active": "#1D4ED8",
+                "accent_disabled": "#94A3B8",
+                "button_bg": "#2563EB",
+                "button_fg": "#FFFFFF",
+                "button_active_bg": "#1D4ED8",
+                "button_disabled_bg": "#E2E8F0",
+                "button_disabled_fg": "#94A3B8",
+            "progress_trough": "#E2E8F0",
+            "progress_bg": "#2563EB",
+            "text_bg": "#FFFFFF",
+            "text_fg": "#0F172A",
+            "text_border": "#CBD5F5",
+            "tooltip_bg": "#FFFFE0",
+            "tooltip_fg": "#1F2933",
+            "tooltip_border": "#CBD5F5",
+        },
+        "dark": {
+            "background": "#0C0C0D",
+            "foreground": "#E4E4E7",
+            "surface": "#18181B",
+            "surface_border": "#27272A",
+            "surface_hover": "#202023",
+            "accent": "#D4D4D8",
+            "accent_active": "#E4E4E7",
+            "accent_disabled": "#3F3F46",
+            "button_bg": "#2B2B2F",
+            "button_fg": "#F4F4F5",
+            "button_active_bg": "#3F3F46",
+            "button_disabled_bg": "#18181B",
+            "button_disabled_fg": "#71717A",
+            "progress_trough": "#151517",
+            "progress_bg": "#52525B",
+            "text_bg": "#0F0F10",
+            "text_fg": "#E4E4E7",
+            "text_border": "#27272A",
+            "tooltip_bg": "#1F1F22",
+            "tooltip_fg": "#E4E4E7",
+            "tooltip_border": "#3F3F46",
+        },
+    }
+        default_theme = CONFIG.ui.default_theme.lower()
+        if default_theme not in {"light", "dark"}:
+            default_theme = "light"
+        self._dark_mode = tk.BooleanVar(value=default_theme == "dark")
+        self._current_theme: str | None = None
+        self._status_normal_fg = "#1F2933"
+        self._status_error_fg = "#B91C1C"
         self.config(padx=20, pady=20)
         self.columnconfigure(0, weight=1)
         self._build_widgets()
@@ -45,7 +100,18 @@ class PDFConverterView(tk.Frame):
         style.configure("TButton", font=("Arial", 11), padding=5)
         style.configure("DropFrame.TFrame", borderwidth=2, relief="ridge")
 
-        ttk.Label(self, text="Input Folder").grid(row=0, column=0, sticky="w")
+        header = ttk.Frame(self)
+        header.grid(row=0, column=0, sticky="ew")
+        header.columnconfigure(0, weight=1)
+
+        ttk.Label(header, text="Input Folder").grid(row=0, column=0, sticky="w")
+        self.theme_toggle = ttk.Checkbutton(
+            header,
+            text="Dark mode",
+            variable=self._dark_mode,
+            command=self._apply_current_theme,
+        )
+        self.theme_toggle.grid(row=0, column=1, sticky="e")
 
         self.drop_frame = ttk.Frame(self, style="DropFrame.TFrame", padding=20)
         self.drop_frame.grid(row=1, column=0, sticky="ew", pady=(10, 5))
@@ -108,6 +174,7 @@ class PDFConverterView(tk.Frame):
         self.progress_frame.columnconfigure(0, weight=1)
 
         self.progress = ttk.Progressbar(self.progress_frame, mode="determinate")
+        self.progress.configure(style="App.Horizontal.TProgressbar")
         self.progress.grid(row=0, column=0, sticky="ew")
 
         self.progress_label = ttk.Label(self.progress_frame, text="0% • 0/0 files")
@@ -119,10 +186,11 @@ class PDFConverterView(tk.Frame):
 
         self.status_label = ttk.Label(self.status_box, text="Ready.", font=("Arial", 11))
         self.status_label.grid(row=0, column=0, sticky="w", padx=10, pady=6)
+        self._configure_status_colors()
 
         self.error_frame = ttk.LabelFrame(self, text="Errors", padding=(10, 10, 10, 10))
-        self.error_frame.grid(row=5, column=0, sticky="nsew", pady=(0, 20))
-        self.rowconfigure(5, weight=1, minsize=200)
+        self.error_frame.grid(row=5, column=0, sticky="nsew", pady=(0, 40))
+        self.rowconfigure(5, weight=1, minsize=220)
         self.error_frame.columnconfigure(0, weight=1)
         self.error_frame.rowconfigure(0, weight=1)
 
@@ -134,8 +202,10 @@ class PDFConverterView(tk.Frame):
             font=("Arial", 10),
             relief="flat",
             bg=self.cget("background"),
+            padx=6,
+            pady=6,
         )
-        self.error_text.grid(row=0, column=0, sticky="nsew")
+        self.error_text.grid(row=0, column=0, sticky="nsew", pady=(0, 5))
 
         status_scrollbar = ttk.Scrollbar(self.error_frame, orient="vertical", command=self.error_text.yview)
         status_scrollbar.grid(row=0, column=1, sticky="ns")
@@ -145,6 +215,7 @@ class PDFConverterView(tk.Frame):
         self.error_count = 0
         self._update_error_header()
         self._tooltip_window: tk.Toplevel | None = None
+        self._apply_current_theme()
 
     # --------------------------------------------------------------------- Controller API
     def set_input_display(self, path: str) -> None:
@@ -200,8 +271,132 @@ class PDFConverterView(tk.Frame):
         self._append_error(message)
 
     # --------------------------------------------------------------------- Internal helpers
+    def _apply_current_theme(self) -> None:
+        theme = "dark" if self._dark_mode.get() else "light"
+        self._apply_theme(theme)
+
+    def _apply_theme(self, theme: str) -> None:
+        if theme not in self._themes:
+            theme = "light"
+        if theme == self._current_theme:
+            return
+        palette = self._themes[theme]
+        style = ttk.Style()
+        try:
+            style.theme_use("clam")
+        except tk.TclError:
+            pass
+
+        style.configure("TFrame", background=palette["background"])
+        style.configure("TLabel", background=palette["background"], foreground=palette["foreground"])
+        style.configure(
+            "TButton",
+            background=palette["button_bg"],
+            foreground=palette["button_fg"],
+            bordercolor=palette["button_bg"],
+            focusthickness=1,
+        )
+        style.map(
+            "TButton",
+            background=[
+                ("active", palette["button_active_bg"]),
+                ("disabled", palette["button_disabled_bg"]),
+            ],
+            foreground=[("disabled", palette["button_disabled_fg"])],
+        )
+        style.configure(
+            "TCheckbutton",
+            background=palette["background"],
+            foreground=palette["foreground"],
+        )
+        style.map(
+            "TCheckbutton",
+            background=[("active", palette["surface_hover"])],
+            foreground=[("disabled", palette["button_disabled_fg"])],
+        )
+        style.configure(
+            "TLabelframe",
+            background=palette["background"],
+            bordercolor=palette["surface_border"],
+        )
+        style.configure(
+            "TLabelframe.Label",
+            background=palette["background"],
+            foreground=palette["foreground"],
+        )
+        style.configure(
+            "DropFrame.TFrame",
+            background=palette["surface"],
+            bordercolor=palette["surface_border"],
+            relief="ridge",
+        )
+        style.map(
+            "DropFrame.TFrame",
+            background=[("active", palette["surface_hover"])],
+        )
+        style.configure(
+            "App.Horizontal.TProgressbar",
+            troughcolor=palette["progress_trough"],
+            bordercolor=palette["progress_trough"],
+            background=palette["progress_bg"],
+        )
+        style.configure(
+            "Vertical.TScrollbar",
+            background=palette["background"],
+            troughcolor=palette["surface"],
+        )
+        style.map(
+            "Vertical.TScrollbar",
+            background=[("active", palette["surface_hover"])],
+        )
+
+        root = self.winfo_toplevel()
+        try:
+            root.configure(bg=palette["background"])
+        except tk.TclError:
+            pass
+        self.configure(bg=palette["background"])
+        self.drop_frame.configure(style="DropFrame.TFrame")
+        self.progress.configure(style="App.Horizontal.TProgressbar")
+        self.status_box.configure(style="TLabelframe")
+        self.error_frame.configure(style="TLabelframe")
+        self.error_text.configure(
+            bg=palette["surface"],
+            fg=palette["text_fg"],
+            insertbackground=palette["text_fg"],
+            highlightbackground=palette["text_border"],
+            highlightcolor=palette["text_border"],
+            highlightthickness=1,
+        )
+        self._configure_status_colors(background=palette["background"])
+        self._current_theme = theme
+
+    def _configure_status_colors(self, background: str | None = None) -> None:
+        style = ttk.Style()
+        if not background:
+            background = (
+                self.status_label.cget("background")
+                or style.lookup("TLabel", "background")
+                or style.lookup("TFrame", "background")
+            )
+        if not background:
+            background = self.cget("background") or "#FFFFFF"
+        try:
+            r, g, b = self.winfo_rgb(background)
+        except tk.TclError:
+            r, g, b = (0xFFFF, 0xFFFF, 0xFFFF)
+        luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 65535
+        if luminance > 0.5:
+            self._status_normal_fg = "#1F2933"
+            self._status_error_fg = "#B91C1C"
+        else:
+            self._status_normal_fg = "#F1F5F9"
+            self._status_error_fg = "#FCA5A5"
+        current_text = self.status_label.cget("text")
+        self.status_label.config(foreground=self._status_normal_fg, text=current_text)
+
     def _set_status(self, message: str, is_error: bool) -> None:
-        foreground = "#FF6B6B" if is_error else "#FFFFFF"
+        foreground = self._status_error_fg if is_error else self._status_normal_fg
         self.status_label.config(text=message, foreground=foreground)
 
     def _append_error(self, message: str) -> None:
@@ -256,19 +451,30 @@ class PDFConverterView(tk.Frame):
         def on_enter(event):  # noqa: ANN001
             if self._tooltip_window is not None:
                 return
+            palette = self._themes.get(
+                self._current_theme or ("dark" if self._dark_mode.get() else "light")
+            )
+            if palette is None:
+                palette = self._themes["light"]
+            tooltip_bg = palette.get("tooltip_bg", "#FFFFE0")
+            tooltip_fg = palette.get("tooltip_fg", "#1F2933")
+            tooltip_border = palette.get("tooltip_border", "#CBD5F5")
             self._tooltip_window = tk.Toplevel(self)
             self._tooltip_window.wm_overrideredirect(True)
             self._tooltip_window.attributes("-topmost", True)
-            label = ttk.Label(
+            self._tooltip_window.configure(background=tooltip_border)
+            label = tk.Label(
                 self._tooltip_window,
                 text=text,
-                background="#FFFFE0",
-                relief="solid",
-                borderwidth=1,
-                padding=5,
+                background=tooltip_bg,
+                foreground=tooltip_fg,
+                relief="flat",
+                borderwidth=0,
+                padx=8,
+                pady=4,
                 wraplength=260,
             )
-            label.pack()
+            label.pack(padx=1, pady=1)
             x = event.x_root + 10
             y = event.y_root + 10
             self._tooltip_window.wm_geometry(f"+{x}+{y}")

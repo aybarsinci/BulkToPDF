@@ -113,7 +113,7 @@ class PDFConverterController:
             if summary.failed_files != 1:
                 message += "s"
             message += " failed."
-            self.view.set_status(message, is_error=True)
+            self.view.display_error(message)
         else:
             self.view.display_info("Conversion completed successfully.")
         self.view.show_download_ready(summary.succeeded_files > 0 and summary.zip_path is not None)

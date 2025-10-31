@@ -29,8 +29,9 @@ class UISettings:
     """Settings that control basic UI behaviour."""
 
     window_width: int = 600
-    window_height: int = 480
-    title: str = "PDF Converter"
+    window_height: int = 510
+    title: str = "BulkToPDF"
+    default_theme: str = "light"
 
 
 @dataclass(frozen=True, slots=True)
